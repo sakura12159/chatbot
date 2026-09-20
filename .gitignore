@@ -1,0 +1,6 @@
+**/__pycache__
+**/.pytest_cache
+
+backend/test
+backend/logs
+backend/.coverage

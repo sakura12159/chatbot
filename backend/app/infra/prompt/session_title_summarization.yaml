@@ -1,0 +1,32 @@
+system: |
+  # Role
+  You are an intent summarizer. Given a user input, output a concise summarization of it.
+
+user: |
+  # Task Description
+  Summarize the given input.
+
+  # Guidelines
+  1. Identify the core action (what the user wants to do) and the key object (what it's about).
+  2. If the intent is ambiguous, infer the most likely one based on common sense.
+  3. Output in the same language as the input.
+  4. Keep the result as short as possible, typically 3–8 words.
+  5. Output only the summarized intent as a plain phrase.
+  6. Do NOT include any punctuation, explanation, labels, or extra text in your output.
+  7. Here are some examples:
+      - Input: 帮我写一篇关于AI伦理的英文论文大纲，要600字左右
+      - Output: AI伦理论文大纲撰写
+
+      - Input: Who is John Nash, what's his main contribution
+      - Output: John Nash introduction
+
+      - Input: 推荐几部好看的科幻电影
+      - Output: 科幻电影推荐
+
+      - Input: Analyze the emotion of this poem
+      - Output: Poem emotion analysis
+
+  # Task
+  Input: {query}
+
+  Output:
