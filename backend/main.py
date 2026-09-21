@@ -43,6 +43,8 @@ async def lifespan(app: FastAPI):
     
     yield
 
+    app.state.llm_client.close()
+
 # 创建实例
 app = FastAPI(
     title='Chatbot API',
