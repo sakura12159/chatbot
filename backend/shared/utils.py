@@ -10,6 +10,14 @@ def get_root_directory() -> Path:
     """
     return Path(__file__).resolve().parent.parent.parent
 
+def get_backend_directory() -> Path:
+    """
+    获取后端的运行目录
+    returns: Path
+        后端运行目录
+    """
+    return Path(__file__).resolve().parent.parent
+
 def get_time_duration(
     start_time: float,
     unit: Literal['s', 'ms', 'ns'] = 'ms',

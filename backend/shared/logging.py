@@ -5,13 +5,13 @@ import logging.config
 from datetime import datetime
 
 from shared.config import LOG_DIRECTORY, LOG_FILENAME, LOG_CONFIG
-from shared.utils import get_root_directory
+from shared.utils import get_backend_directory
 
 def init_logging() -> None:
     """ 初始化 log 配置 """
-    # p = get_root_directory() / LOG_DIRECTORY
-    # p.mkdir(parents=True, exist_ok=True)
-    # open(p / LOG_FILENAME, 'a', encoding='utf-8').close()
+    p = get_backend_directory() / LOG_DIRECTORY
+    p.mkdir(parents=True, exist_ok=True)
+    open(p / LOG_FILENAME, 'a', encoding='utf-8').close()
 
     logging.config.dictConfig(LOG_CONFIG)
 
