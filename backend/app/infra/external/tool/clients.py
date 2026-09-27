@@ -304,7 +304,7 @@ class WebClient:
 
     @staticmethod
     def extract(
-        urls: str | list[str],
+        urls: list[str],
         *,
         api_key: str | None = WEB_API_KEY,
         query: str | None = None,
@@ -319,7 +319,7 @@ class WebClient:
         """
         提取具体 url 的内容
         Args:
-            urls (str | list[str]):                             url
+            urls (list[str]):                                   url 列表
             api_key (str | None):                               tavily api key
             query (str | None):                                 查询关键字
             chunks_per_source (int | None):                     相关分块数量

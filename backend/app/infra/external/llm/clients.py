@@ -81,7 +81,7 @@ class LLMClient(HttpClient):
         self,
         *,
         messages: list[dict[str, str]],
-        model: Literal['deepseek-v4-flash', 'deepseek-v4-pro'] = LLM_CHAT_MODEL,
+        model: str = LLM_CHAT_MODEL,
         thinking: dict[str, str] | None = None,
         reasoning_effort: Literal['high', 'max'] = LLM_REASONING_EFFORT,
         max_tokens: int | None = LLM_MAX_TOKENS_PER_GENERATION,
@@ -100,7 +100,7 @@ class LLMClient(HttpClient):
         Args:
             messages (list[dict[str, str]]):                                                模型输入
             api_key (str | None):                                                       deepseek api key
-            model (Literal['deepseek-v4-flash', 'deepseek-v4-pro']):                    模型名称
+            model (str):                    模型名称
             thinking (dict[str, str] | None):                                           是否开启思考模式
             reasoning_effort (Literal['high', 'max']):                                  推理强度
             max_tokens (int | None):                                                    模型最大生成 token 数
@@ -150,7 +150,7 @@ class LLMClient(HttpClient):
         self,
         *,
         messages: list[dict[str, str]],
-        model: Literal['deepseek-v4-flash', 'deepseek-v4-pro'] = LLM_CHAT_MODEL,
+        model: str = LLM_CHAT_MODEL,
         thinking: dict[str, str] | None = None,
         reasoning_effort: Literal['high', 'max'] = LLM_REASONING_EFFORT,
         max_tokens: int | None = LLM_MAX_TOKENS_PER_GENERATION,
@@ -170,7 +170,7 @@ class LLMClient(HttpClient):
         Args:
             messages (list[dict[str, str]]):                                            模型输入
             api_key (str | None):                                                       deepseek api key
-            model (Literal['deepseek-v4-flash', 'deepseek-v4-pro']):                    模型名称
+            model (str):                    模型名称
             thinking (dict[str, str] | None):                                           是否开启思考模式
             reasoning_effort (Literal['high', 'max']):                                  推理强度
             max_tokens (int | None):                                                    模型最大生成 token 数

@@ -69,7 +69,7 @@ def web_search(query: str) -> ToolCallResult:
         error_message=error_message
     )
 
-def web_extract(urls: str | list[str], query: str | None = None) -> ToolCallResult:
+def web_extract(urls: list[str], query: str | None = None) -> ToolCallResult:
     """ 访问单个或多个资源地址获取详细信息 """
     response = WebClient.extract(urls=urls, query=query)
     if 'detail' in response:
