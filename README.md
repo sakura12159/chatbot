@@ -2,6 +2,12 @@
 ## 涉及：Python | Typescript | Vue3 | Zod | Pinia | FastAPI | Pydantic | PostgreSQL | SQLAlchemy | Tavily | E2B | DeepSeek API
 ## 项目描述：通用场景对话 AI，支持多轮会话、思考模式、工具调用（网络搜索与代码执行）、流式输出、会话持久化与 Markdown 渲染。后端采用 DDD 分层架构，解耦领域逻辑、LLM 调用与数据库实现；前端基于 Vue3 + TypeScript 实现流式对话交互。
 
+## 依赖安装
+```bash
+uv sync  # 安装项目后端依赖包，需要 uv
+npm install  # 安装项目前端依赖包，需要 Node.js
+```
+
 ## 命令行
 后端：目录 chatbot/backend下，
 ```bash 
