@@ -1,14 +1,21 @@
+import uuid
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from dacite import from_dict
+from dacite import from_dict, Config
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import TypeDecorator
 
-from shared.config import DACITE_CONFIG
+DACITE_CONFIG = Config(
+    type_hooks={
+        uuid.UUID: uuid.UUID,
+        datetime: datetime.fromisoformat,
+    },
+    cast=[Enum],
+)
 
 class ListOfType(TypeDecorator):
     impl = JSONB

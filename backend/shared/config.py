@@ -1,11 +1,6 @@
 import os
 import logging
-import uuid
-from enum import Enum
 from typing import Literal
-
-from datetime import datetime
-from dacite import Config
 
 # LLM
 LLM_BASE_URL = 'https://api.deepseek.com'
@@ -80,13 +75,6 @@ DB_DEFAULT_DBNAME = 'postgres'
 DB_ECHO = False
 DB_POOL_SIZE = 10
 DB_MAX_OVERFLOW = 20
-DACITE_CONFIG = Config(
-    type_hooks={
-        uuid.UUID: uuid.UUID,
-        datetime: datetime.fromisoformat,
-    },
-    cast=[Enum],
-)
 
 # http
 HTTP_TIMEOUT_SECONDS = 10.0
