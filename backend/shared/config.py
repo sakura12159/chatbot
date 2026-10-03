@@ -2,12 +2,16 @@ import os
 import logging
 from typing import Literal
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # LLM
 LLM_BASE_URL = 'https://api.deepseek.com'
 LLM_CHAT_COMPLETIONS_PATH = '/chat/completions'
 LLM_BALANCE_INQUERY_PATH = '/user/balance'
 LLM_TIMEOUT_SECONDS = 60.0
-LLM_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
+LLM_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 LLM_CHAT_MODEL = 'deepseek-flash'
 LLM_SUMMARIZATION_MODEL = 'deepseek-flash'
 LLM_REASONING_EFFORT: Literal['high', 'max'] = 'high'
@@ -85,7 +89,7 @@ HTTP_WAIT_EXPONENTIAL_MAX = 10
 
 # tools
 # web
-WEB_API_KEY = os.environ.get('TAVILY_API_KEY')
+WEB_API_KEY = os.getenv('TAVILY_API_KEY')
 WEB_TIMEOUT_SECONDS = 30.0
 WEB_SEARCH_MAX_RESULTS = 10
 WEB_SEARCH_DEPTH: Literal['basic', 'advanced', 'fast', 'ultra-fast'] = 'basic'
@@ -94,7 +98,7 @@ WEB_EXTRACT_DEPTH: Literal['basic', 'advanced'] = 'basic'
 WEB_EXTRACT_FORMAT: Literal['markdown', 'text'] = 'markdown'
 
 # sandbox
-SANDBOX_API_KEY = os.environ.get('E2B_API_KEY')
+SANDBOX_API_KEY = os.getenv('E2B_API_KEY')
 SANDBOX_TEMPLATE_NAME = 'ai_code_execution'
 SANDBOX_TEMPLATE_REQUIREMENTS = ['numpy', 'scipy', 'matplotlib', 'pandas']
 SANDBOX_TEMPLATE_CPU_COUNT = 1
