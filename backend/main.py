@@ -6,7 +6,8 @@ from app.infra.external.llm.clients import LLMClient, TextSummarizer
 from app.infra.prompt.loaders import PromptLoader
 from app.infra.tool.registries import ToolRegistry
 from app.infra.tool.executors import ToolExecutor
-from app.infra.tool.loaders import ToolBuiltinLoader
+from app.infra.tool.loaders import ToolBuiltinLoader, RagDocumentLoader
+from app.infra.tool.rag.vector_database import init_vector_database
 from app.infra.persistence.database import init_database
 from app.application.chat.services import BalanceService
 from app.api.middlewares import add_middlewares
@@ -19,11 +20,17 @@ async def lifespan(app: FastAPI):
     # 配置记录文件设置
     init_logging()
 
-    # 初始化数据库
+    # 初始化数据库，一次即可
     # init_database(by_force=True)
 
-    # 初始化内置工具所需要的外部依赖
+    # 初始化向量数据库，一次即可
+    # init_vector_database(by_force=True)
+
+    # 初始化内置工具所需要的外部依赖，一次即可
     # ToolBuiltinLoader.init_external_dependencies()
+
+    # 初始化向量数据库，一次即可
+    # RagDocumentLoader.init()
 
     # 创建单例，存入 app.state
     tool_registry = ToolRegistry()

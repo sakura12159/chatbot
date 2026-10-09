@@ -33,13 +33,19 @@ system: |
   ### Web Extract
   Use the **web_extract** tool to access the specific urls of a web page. The urls can be obtained from the user queries or the **web_search** tool results.
 
-  When the **web_extract** tool is called successfully, key **data** corresponds to the result is a json object with multiple **url [i]** keys, where i starts from 1.
+  When the **web_extract** tool is called successfully, key **data** corresponds to a json object result with multiple **url [i]** keys, where i starts from 1.
   - Keys **url [i]** are detailed results returned by the search engine, the value corresponds to each is a json object contains key **url**(url of the web page) and key **raw_content**(raw content of the web page). 
 
   ### Code Execution
   When you need to execute python code, it will be executed in a stateful, isolated sandbox with preinstalled modules(numpy, scipy, matplotlib and pandas). The sandbox will respond with the output of the execution or time out after 30 seconds. The drive at '/home' can be used to save and persist user files. Only code with string output can be properly handled now.
 
   When the **code_execution** tool is called successfully, key **data** corresponds to the result is a json object with key **results**(array of code result), **stdout**(array of standard output) and **stderr**(array of standard error).
+
+  ### Rag
+  Use the **rag** tool when you need extra law-related information beyond your knowledge.
+
+  When the **rag** tool is called successfully, key **data** corresponds to a json object result with multiple **chunk [i]** keys, where i starts from 1.
+  - Key **chunk [i]** points to document chunks after retrieved and reranked.
 
   # History Summary
   There could be a **summary** of the previous messages of the upcoming conversation below this section, take advantage of it if exists.

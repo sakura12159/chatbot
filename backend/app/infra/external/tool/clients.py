@@ -1,6 +1,18 @@
+import json
 import time
 import logging
-from typing import Any, Literal
+from typing import Any, Literal, Generator
+from contextlib import contextmanager
+from functools import lru_cache
+
+from dotenv import load_dotenv
+load_dotenv()
+
+import httpx
+
+from sqlalchemy import text, insert, select
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from e2b import default_build_logger
 from e2b_code_interpreter import Template, Sandbox
@@ -8,11 +20,20 @@ from e2b_code_interpreter.models import Execution
 
 from tavily import TavilyClient
 
-from app.infra.common.exceptions import ExternalError
+from cohere import ClientV2
+
+from app.infra.external.http.proxy_client import create_proxy_client
+from app.infra.common.exceptions import ExternalError, PersistenceError
+from app.infra.tool.rag.vector_database import session_maker
+from app.infra.tool.rag.types import RetrievedChunk, RerankedChunk
+from app.infra.tool.rag.models.source_document_model import SourceDocument
+from app.infra.tool.rag.models.document_chunk_model import DocumentChunk
 from shared.config import SANDBOX_API_KEY, SANDBOX_TEMPLATE_NAME, SANDBOX_TEMPLATE_REQUIREMENTS, \
     SANDBOX_TIMEOUT_SECONDS, SANDBOX_TEMPLATE_MEMORY_MB, SANDBOX_TEMPLATE_CPU_COUNT, WEB_API_KEY, \
-    WEB_TIMEOUT_SECONDS, WEB_SEARCH_DEPTH, WEB_SEARCH_INCLUDE_ANSWER, WEB_SEARCH_MAX_RESULTS, \
-    WEB_EXTRACT_DEPTH, WEB_EXTRACT_FORMAT
+    WEB_TIMEOUT_SECONDS, WEB_SEARCH_MAX_RESULTS, RAG_SPLIT_CHUNK_SIZE, RAG_SPLIT_CHUNK_OVERLAP, RAG_SPLIT_SEPERATORS, \
+    RAG_EMBEDDING_MODEL, RAG_RERANK_MODEL, RAG_API_KEY, RAG_RETRIVE_HNSW_EF_SEARCH, RAG_RERANK_TOPK, \
+    RAG_RETRIEVE_TOPK, RAG_RETRIEVE_MIN_SIMILARITY, RAG_EMBEDDING_TEXT_PER_CALL, \
+    RAG_EMBEDDING_DIM, HTTP_PROXY_URL, HTTP_TIMEOUT_SECONDS
 from shared.utils import get_time_duration
 
 logger = logging.getLogger(__name__)
@@ -24,14 +45,14 @@ class SandBoxClient:
     """
 
     @staticmethod
-    def _check_api_key(api_key: str | None):
+    def _check_api_key(api_key: str | None) -> None:
         """ 检查 api key """
         if api_key is None:
             logger.exception(
                 'E2B 沙盒 api 不存在'
             )
 
-            raise ExternalError('E2B 沙盒 api 不存在')
+            raise ExternalError('E2B 沙盒 api key 不存在')
 
     @staticmethod
     def build_template(
@@ -173,13 +194,13 @@ class WebClient:
     负责网络关键词搜索与提取具体页面信息
     """
     @staticmethod
-    def _check_api_key(api_key: str | None):
+    def _check_api_key(api_key: str | None) -> None:
         """ 检查 api key """
         if api_key is None:
             logger.exception(
                 'Tavily api 不存在'
             )
-            raise ExternalError('Tavily api 不存在')
+            raise ExternalError('Tavily api key 不存在')
 
     @staticmethod
     def search(
@@ -187,13 +208,13 @@ class WebClient:
         *,
         api_key: str | None = WEB_API_KEY,
         max_results: int | None = WEB_SEARCH_MAX_RESULTS,
-        search_depth: Literal['basic', 'advanced', 'fast', 'ultra-fast'] | None = WEB_SEARCH_DEPTH,
+        search_depth: Literal['basic', 'advanced', 'fast', 'ultra-fast'] | None = 'basic',
         chunks_per_source: int | None = 3,
         topic: Literal['general', 'news', 'finance'] | None = 'general',
         time_range: Literal['day', 'week', 'month', 'year', 'd', 'w', 'm', 'y'] | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
-        include_answer: bool | Literal['basic', 'advanced'] | None = WEB_SEARCH_INCLUDE_ANSWER,
+        include_answer: bool | Literal['basic', 'advanced'] | None = 'basic',
         include_raw_content: bool | Literal['markdown', 'text'] | None = False,
         include_images: bool | None = False,
         include_image_descriptions: bool | None = False,
@@ -235,6 +256,8 @@ class WebClient:
         Returns: dict[str, Any]
             搜索结果，结构见 https://docs.tavily.com/documentation/api-reference/endpoint/search
         """
+        WebClient._check_api_key(api_key=WEB_API_KEY)
+
         logger.info(
             '执行网络搜索',
             extra={
@@ -309,10 +332,10 @@ class WebClient:
         api_key: str | None = WEB_API_KEY,
         query: str | None = None,
         chunks_per_source: int | None = 3,
-        extract_depth: Literal['basic', 'advanced'] | None = WEB_EXTRACT_DEPTH,
+        extract_depth: Literal['basic', 'advanced'] | None = 'basic',
         include_images: bool | None = False,
         include_favicon: bool | None = False,
-        format: Literal['markdown', 'text'] | None = WEB_EXTRACT_FORMAT,
+        format: Literal['markdown', 'text'] | None = 'markdown',
         timeout: float | None = WEB_TIMEOUT_SECONDS,
         include_usage: bool | None = False
     ) -> dict[str, Any]:
@@ -332,6 +355,8 @@ class WebClient:
         Returns: dict[str, Any]
             访问结果 https://docs.tavily.com/documentation/api-reference/endpoint/extract
         """
+        WebClient._check_api_key(api_key=WEB_API_KEY)
+
         logger.info(
             '执行网络信息提取',
             extra={
@@ -386,3 +411,381 @@ class WebClient:
             )
             
             raise ExternalError(f'提取 url {urls} 失败') from e
+
+@contextmanager
+def get_vector_orm_session() -> Generator:
+    """ 生成向量数据库会话，用于依赖注入。每次请求结束后自动关闭会话 """
+    orm_session = session_maker()
+    orm_session.execute(text(f'SET hnsw.ef_search = {RAG_RETRIVE_HNSW_EF_SEARCH}'))  # 设置检索参数，提高召回率
+
+    try:
+        yield orm_session
+    finally:
+        orm_session.close()
+
+@lru_cache(maxsize=1)
+def get_proxy_client(proxy: str = HTTP_PROXY_URL, timeout: float = HTTP_TIMEOUT_SECONDS) -> httpx.Client:
+    """ 获取 httpx 代理客户端，Cohere api 需要 """
+    return create_proxy_client(proxy=proxy, timeout=timeout)
+
+class RagClient:
+    """
+    基于 Cohere API 的 rag 客户端
+    负责从向量数据库中检索相关信息
+    """
+
+    @staticmethod
+    def _check_api_key(api_key: str | None) -> None:
+        """ 检查 api key """
+        if api_key is None:
+            logger.exception(
+                'Cohere api 不存在'
+            )
+            raise ExternalError('Cohere api key 不存在')
+
+    @staticmethod
+    def encode_text(
+        texts: list[str],
+        *,
+        api_key: str | None = RAG_API_KEY,
+        model: str = RAG_EMBEDDING_MODEL,
+        text_per_call: int = RAG_EMBEDDING_TEXT_PER_CALL,
+        output_dimension: int = RAG_EMBEDDING_DIM,
+        embedding_type: Literal['float', 'int8', 'uint8', 'binary', 'ubinary', 'base64'] = 'float'
+    ) -> list[list[float]]:
+        """
+        使用嵌入模型编码字符串
+        Args:
+            texts (list[str]):                                                                  要编码的字符串列表
+            api_key (str | None):                                                               api key
+            model (str):                                                                        嵌入模型名称
+            text_per_call (int):                                                                每次 embed 的字符串数量
+            output_dimension(int):                                                              嵌入维度
+            embedding_type (Literal['float', 'int8', 'uint8', 'binary', 'ubinary', 'base64']):  嵌入编码的数据类型
+        Returns: list[list[float]]
+            编码列表
+        """
+        RagClient._check_api_key(api_key=api_key)
+
+        logger.debug(
+            '使用嵌入模型进行编码',
+            extra={
+                'text_count': len(texts)
+            }
+        )
+        start_time = time.perf_counter()
+
+        client = ClientV2(
+            api_key=api_key,
+            httpx_client=get_proxy_client()  # 注入自定义客户端
+        )
+        try:
+            res = []
+            for i in range(0, len(texts), text_per_call):
+                response = client.embed(
+                    texts=texts[i:i + text_per_call],
+                    model=model,
+                    input_type='search_document',
+                    output_dimension=output_dimension,
+                    embedding_types=[embedding_type]
+                )
+                res.extend(json.loads(response.json())['embeddings'][embedding_type])
+
+            logger.debug(
+                '嵌入模型编码成功',
+                extra={
+                    'text_count': len(texts),
+                    'embedding_count': len(res),
+                    'duration_ms': get_time_duration(start_time=start_time)
+                }
+            )
+
+            return res
+
+        except Exception as e:
+            logger.exception(
+                '嵌入模型编码失败',
+                extra={
+                    'text_count': len(texts),
+                    'duration_ms': get_time_duration(start_time=start_time)
+                }
+            )
+            
+            raise ExternalError(f'嵌入模型编码失败: {e}') from e
+
+    @staticmethod
+    def ingest(
+        name: str,
+        content: str,
+        source_url: str | None
+    ) -> None:
+        """
+        文档内容切分
+        Args:
+            name (str):                 文档名
+            content (str):              文档内容
+            source_url (str | None):    文档链接
+        """
+        logger.info(
+            '开始文档切分编码与入库',
+            extra={
+                'document_name': name,
+                'source_url': source_url,
+                'content_count': len(content)
+            }
+        )
+
+        start_time = time.perf_counter()
+
+        try:
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=RAG_SPLIT_CHUNK_SIZE,
+                chunk_overlap=RAG_SPLIT_CHUNK_OVERLAP,
+                separators=RAG_SPLIT_SEPERATORS
+            )
+            # 切分字符串并编码
+            splitted_texts = splitter.split_text(text=content)
+            if not splitted_texts:
+                logger.info(
+                    '文档切分结果为空，跳过入库',
+                    extra={
+                        'document_name': name,
+                        'source_url': source_url,
+                        'content_count': len(content),
+                        'duration_ms': get_time_duration(start_time=start_time)
+                    }
+                )
+                return
+            
+            embeddings = RagClient.encode_text(texts=splitted_texts)
+
+        except Exception as e:
+            logger.exception(
+                '文档切分或编码失败',
+                extra={
+                    'document_name': name,
+                    'source_url': source_url,
+                    'content_count': len(content),
+                    'duration_ms': get_time_duration(start_time=start_time)
+                }
+            )
+
+            raise PersistenceError(f'文档切分或编码异常: {e}') from e
+
+        if len(splitted_texts) != len(embeddings):
+            logger.exception(
+                '文档切分与编码结果长度不一致',
+                extra={
+                    'document_name': name,
+                    'source_url': source_url,
+                    'content_count': len(content),
+                    'chunk_count': len(splitted_texts),
+                    'embedding_count': len(embeddings),
+                    'duration_ms': get_time_duration(start_time=start_time)
+                }
+            )
+
+            raise PersistenceError(f'文档文档切分或编码异常')
+        
+        with get_vector_orm_session() as orm_session:
+            try:
+                # 存入数据库
+                source_document_model = SourceDocument(
+                    name=name,
+                    source_url=source_url
+                )
+                orm_session.add(source_document_model)
+                orm_session.flush()
+
+                document_chunks = [
+                    {
+                        'document_id': source_document_model.id,
+                        'chunk_index': i,
+                        'content': splitted_text,
+                        'embedding': embedding
+                    } 
+                    for i, (splitted_text, embedding) in enumerate(zip(splitted_texts, embeddings))
+                ]
+
+                orm_session.execute(insert(DocumentChunk), document_chunks)
+                orm_session.commit()
+
+                logger.info(
+                    '文档切分入库成功',
+                    extra={
+                        'document_name': name,
+                        'source_url': source_url,
+                        'content_count': len(content),
+                        'chunk_count': len(splitted_texts),
+                        'duration_ms': get_time_duration(start_time=start_time)
+                    }
+                )
+
+            except Exception as e:
+                orm_session.rollback()
+
+                logger.exception(
+                    '文档切分入库失败',
+                    extra={
+                        'document_name': name,
+                        'source_url': source_url,
+                        'content_count': len(content),
+                        'duration_ms': get_time_duration(start_time=start_time)
+                    }
+                )
+
+                raise PersistenceError(f'文档切分入库异常: {e}') from e
+
+    @staticmethod
+    def retrieve(
+        query: str, 
+        topk: int = RAG_RETRIEVE_TOPK,
+        min_similarity: float | None = RAG_RETRIEVE_MIN_SIMILARITY
+    ) -> list[RetrievedChunk]:
+        """
+        向量检索
+        Args:
+            query (str):                    要检索的输入
+            topk (int):                     检索前 n 条最相关的向量
+            min_similarity (float | None):  相似度阈值
+        Returns: list[RetrievedChunk]
+            检索结果列表
+        """
+        logger.debug(
+            '开始进行向量检索',
+            extra={
+                'query': query,
+                'topk': topk,
+                'min_similarity': min_similarity
+            }
+        )
+
+        start_time = time.perf_counter()
+
+        
+        try:
+            with get_vector_orm_session() as orm_session:
+                embedding = RagClient.encode_text(texts=[query])[0]
+                distance = DocumentChunk.embedding.cosine_distance(embedding)
+
+                stmt = (
+                    select(
+                        DocumentChunk.id, 
+                        DocumentChunk.document_id,
+                        DocumentChunk.content,
+                    )
+                    .order_by(distance)
+                    .limit(topk)
+                )
+
+                if min_similarity is not None:
+                    stmt = stmt.where((1 - distance) >= min_similarity)
+
+                document_chunk_models = orm_session.execute(stmt).all()
+
+                res = [
+                    RetrievedChunk(
+                        id=model.id,
+                        document_id=model.document_id,
+                        content=model.content
+                    )
+                    for model in document_chunk_models
+                ]
+
+                logger.debug(
+                    '向量检索成功',
+                    extra={
+                        'query': query,
+                        'topk': topk,
+                        'min_similarity': min_similarity,
+                        'retrieved_count': len(res),
+                        'duration_ms': get_time_duration(start_time=start_time)
+                    }
+                )
+
+                return res
+
+        except Exception as e:
+            logger.exception(
+                '向量检索失败',
+                extra={
+                    'query': query,
+                    'topk': topk,
+                    'min_similarity': min_similarity,
+                    'duration_ms': get_time_duration(start_time=start_time)
+                }
+            )
+
+            raise PersistenceError(f'向量检索失败: {e}') from e
+
+    @staticmethod
+    def rerank(
+        query: str,
+        chunks: list[str],
+        *,
+        api_key: str | None = RAG_API_KEY,
+        model: str = RAG_RERANK_MODEL,
+        topk: int = RAG_RERANK_TOPK
+    ) -> list[RerankedChunk]:
+        """
+        检索结果重排序
+        Args:
+            query (str):        要匹配的字符串
+            chunks (list[str]): 检索结果字符串列表
+            topk (int):         返回前 n 条最相关的向量
+        Returns: list[RerankedChunk]
+            重排序结果类列表
+        """
+        RagClient._check_api_key(api_key=api_key)
+
+        logger.debug(
+            '开始对检索结果进行重排序',
+            extra={
+                'query': query,
+                'chunk_count': len(chunks),
+            }
+        )
+        start_time = time.perf_counter()
+
+        client = ClientV2(
+            api_key=api_key
+        )
+        try:        
+            response = client.rerank(
+                model=model,
+                query=query,
+                documents=chunks,
+                top_n=topk
+            )
+            res = json.loads(response.json())
+            res = [
+                RerankedChunk(
+                    content=chunks[result['index']],
+                    score=result['relevance_score']
+                )
+                for result in res['results']
+            ]
+
+            logger.debug(
+                '检索结果重排序成功',
+                extra={
+                    'query': query,
+                    'chunk_count': len(chunks),
+                    'reranked_chunk_count': len(res),
+                    'duration_ms': get_time_duration(start_time=start_time)
+                }
+            )
+
+            return res
+
+        except Exception as e:
+            logger.exception(
+                '检索结果重排序失败',
+                extra={
+                    'query': query,
+                    'chunk_count': len(chunks),
+                    'duration_ms': get_time_duration(start_time=start_time)
+                }
+            )
+            
+            raise ExternalError(f'检索结果重排序失败: {e}') from e

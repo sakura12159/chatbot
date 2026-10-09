@@ -3,11 +3,11 @@ from fastapi import Depends, Request
 
 from app.domain.tool.registries import ToolRegistry
 from app.domain.tool.executors import ToolExecutor
-from app.application.prompt.loaders import PromptLoader
+from app.application.prompt.ports import PromptLoader
 from app.application.common.unit_of_work import UnitOfWork
 from app.application.llm.ports import LLMClient, TextSummarizer
 from app.application.user.services import UserService
-from app.application.session.queries import SessionQuery
+from app.application.session.ports import SessionQuery
 from app.application.session.services import SessionService
 from app.application.chat.services import ChatService, BalanceService
 from app.infra.persistence.database import get_orm_session

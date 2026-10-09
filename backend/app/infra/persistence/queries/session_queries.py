@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session as ORMSession
 
 from app.domain.user.value_objects import UserId
 from app.infra.common.exceptions import PersistenceError
-from app.infra.persistence.models.session_model import ChatSessionModel
+from app.infra.persistence.models.chat_session_model import ChatSessionModel
 from app.application.session.dto import ChatSessionInfoDTO
 from shared.utils import get_time_duration
 

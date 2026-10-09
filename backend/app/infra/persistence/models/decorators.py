@@ -26,7 +26,7 @@ class ListOfType(TypeDecorator):
         self.element_type = element_type
 
     def _to_jsonable(self, value: Any) -> Any:
-        """把 asdict 输出中的 UUID/datetime/Enum 转成 JSON 兼容类型"""
+        """ 把 asdict 输出中的 UUID/datetime/Enum 转成 JSON 兼容类型 """
         if isinstance(value, dict):
             return {k: self._to_jsonable(v) for k, v in value.items()}
         if isinstance(value, list):

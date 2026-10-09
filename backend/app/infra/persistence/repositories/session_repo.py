@@ -10,8 +10,8 @@ from app.domain.message.value_objects import ChatMessage, ChatMessageRole
 from app.domain.session.value_objects import ChatSessionId
 from app.domain.session.entities import ChatSession
 from app.infra.common.exceptions import PersistenceError
-from app.infra.persistence.models.session_model import ChatSessionModel
-from app.infra.persistence.models.message_model import ChatMessageModel
+from app.infra.persistence.models.chat_session_model import ChatSessionModel
+from app.infra.persistence.models.chat_message_model import ChatMessageModel
 from shared.config import LLM_MAX_HISTORY_TURNS
 from shared.utils import get_time_duration
 

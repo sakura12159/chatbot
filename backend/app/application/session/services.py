@@ -7,7 +7,7 @@ from app.domain.session.value_objects import ChatSessionId
 from app.domain.session.entities import ChatSession
 from app.application.common.unit_of_work import UnitOfWork
 from app.application.session.dto import ChatSessionDTO, ChatSessionInfoDTO
-from app.application.session.queries import SessionQuery
+from app.application.session.ports import SessionQuery
 from shared.utils import get_time_duration
 
 logger = logging.getLogger(__name__)

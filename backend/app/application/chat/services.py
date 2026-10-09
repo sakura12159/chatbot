@@ -17,7 +17,7 @@ from app.application.llm.ports import LLMClient, TextSummarizer
 from app.application.llm.dto import LLMRequestDTO
 from app.application.llm.value_objects import LLMFinishReasonType
 from app.application.chat.dto import ChatStreamResponseChunkDTOType, ChatStreamResponseChunkDTO, BalanceInfoDTO
-from app.application.prompt.loaders import PromptLoader
+from app.application.prompt.ports import PromptLoader
 from shared.config import LLM_MAX_REACT_ITERATIONS, LLM_COMPRESSION_TRIGGER_HISTORY_TURNS, LLM_COMPRESSION_TRIGGER_TOKENS, LLM_COMPRESSION_TURNS_PER_LOOP
 from shared.utils import get_time_duration
 
@@ -286,6 +286,7 @@ class ChatService:
             tools = self.tool_registry.list_tools()
 
             # 推理计时
+            is_thinking = thinking
             reasoning_start_time = time.perf_counter()
             reasoning_time = None
 
@@ -343,8 +344,8 @@ class ChatService:
                                 tool_calls_map[idx]['function']['arguments'] += tool_call.arguments
 
                     # 判断推理是否结束，如果此时结束统计推理时间，返回一个包含推理时间的空 chunk
-                    if thinking and chunk_type == ChatStreamResponseChunkDTOType.MARKDOWN:
-                        thinking = False
+                    if is_thinking and chunk_type == ChatStreamResponseChunkDTOType.MARKDOWN:
+                        is_thinking = False
                         reasoning_time = time.perf_counter() - reasoning_start_time
                         yield ChatStreamResponseChunkDTO(
                             type=ChatStreamResponseChunkDTOType.THINKING,

@@ -7,7 +7,10 @@ from app.infra.persistence.repositories.user_repo import UserRepository as UserR
 from app.infra.persistence.repositories.session_repo import ChatSessionRepository as ChatSessionRepositoryImpl
 
 class UnitOfWork:
-    """ 管理 sqlalchemy 事务 """
+    """
+    数据库事务工作单元
+    负责数据库事务的提交与回滚
+    """
     def __init__(self, orm_session: Session) -> None:
         self._orm_session = orm_session
         self.user_repo: UserRepository = UserRepositoryImpl(orm_session=orm_session)

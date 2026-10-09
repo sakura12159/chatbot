@@ -9,11 +9,11 @@ from app.domain.tool.entities import Tool
 from app.domain.llm.value_objects import LLMMessage, ChatContext, TokenUsage
 from app.infra.external.http.http_client import HttpClient
 from app.application.common.exceptions import LLMError
-from app.application.prompt.loaders import PromptLoader
+from app.application.prompt.ports import PromptLoader
 from app.application.llm.ports import LLMClient as LLMClientPTC
 from app.application.llm.dto import LLMRequestDTO, LLMResponseDTO, LLMStreamResponseChunkDTO, InquireBalanceResponseDTO
-from shared.config import LLM_BASE_URL, LLM_CHAT_COMPLETIONS_PATH, LLM_BALANCE_INQUERY_PATH, LLM_API_KEY, LLM_CHAT_MODEL, LLM_MAX_TOKENS_PER_GENERATION, \
-    LLM_REASONING_EFFORT, LLM_TEMPERATURE, LLM_TOP_P, LLM_TIMEOUT_SECONDS
+from shared.config import LLM_BASE_URL, LLM_CHAT_COMPLETIONS_PATH, LLM_BALANCE_INQUERY_PATH, LLM_API_KEY, LLM_CHAT_MODEL, \
+    LLM_MAX_TOKENS_PER_GENERATION, LLM_TEMPERATURE, LLM_TOP_P, LLM_TIMEOUT_SECONDS
 from shared.utils import get_time_duration
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ class LLMClient(HttpClient):
         messages: list[dict[str, str]],
         model: str = LLM_CHAT_MODEL,
         thinking: dict[str, str] | None = None,
-        reasoning_effort: Literal['high', 'max'] = LLM_REASONING_EFFORT,
+        reasoning_effort: Literal['high', 'max'] = 'high',
         max_tokens: int | None = LLM_MAX_TOKENS_PER_GENERATION,
         response_format: dict[str, str] | None = None,
         stop: str | list[str] | None = None,
@@ -152,7 +152,7 @@ class LLMClient(HttpClient):
         messages: list[dict[str, str]],
         model: str = LLM_CHAT_MODEL,
         thinking: dict[str, str] | None = None,
-        reasoning_effort: Literal['high', 'max'] = LLM_REASONING_EFFORT,
+        reasoning_effort: Literal['high', 'max'] = 'high',
         max_tokens: int | None = LLM_MAX_TOKENS_PER_GENERATION,
         response_format: dict[str, str] | None = None,
         stop: str | list[str] | None = None,

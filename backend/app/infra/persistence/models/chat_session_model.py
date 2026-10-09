@@ -27,7 +27,7 @@ class ChatSessionModel(Base):
         nullable=False
     )
     
-    # 会话标题，默认值 New Session
+    # 会话标题
     title: Mapped[str] = mapped_column(
         String(255),
         nullable=False

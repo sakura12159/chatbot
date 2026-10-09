@@ -5,8 +5,8 @@ from app.domain.session.repositories import ChatSessionRepository
 
 class UnitOfWork(Protocol):
     """
-    事务工作单元
-    负责事务的提交与回滚
+    数据库事务工作单元
+    负责数据库事务的提交与回滚
     """
     user_repo: UserRepository
     session_repo: ChatSessionRepository
