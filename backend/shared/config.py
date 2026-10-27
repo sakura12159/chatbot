@@ -1,9 +1,7 @@
 import os
 import logging
-from typing import Literal
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
 # LLM

@@ -4,7 +4,7 @@
 
 ## 依赖安装
 ```bash
-sudo apt install postgresql postgresql-16-pgvector  # 安装 postgresql和 pgvector
+sudo apt install postgresql postgresql-16-pgvector  # 安装 postgresql 和 pgvector
 
 uv sync  # 安装项目后端依赖包，需要 uv
 npm install  # 安装项目前端依赖包，需要 Node.js

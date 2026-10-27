@@ -7,9 +7,6 @@ from app.api.schemas.responses import ChatResponseChunk
 from app.api.dependencies import get_chat_service
 from app.application.chat.services import ChatService
 
-import logging
-logger = logging.getLogger(__name__)
-
 router = APIRouter(
     prefix='/chat',
     tags=['chat']

@@ -12,7 +12,6 @@ from shared.utils import get_time_duration
 from shared.config import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_DEFAULT_DBNAME, RAG_DB_NAME, \
     RAG_DB_ECHO, RAG_DB_POOL_SIZE, RAG_DB_MAX_OVERFLOW
     
-
 logger = logging.getLogger(__name__)
 
 Base = declarative_base()
